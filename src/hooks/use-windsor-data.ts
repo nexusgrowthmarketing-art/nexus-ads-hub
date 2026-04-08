@@ -1,0 +1,50 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
+import { DateRange } from "@/types/windsor";
+
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+export function useWindsorData<T>(
+  endpoint: string,
+  dateRange: DateRange | null,
+  accountId?: string
+) {
+  const [data, setData] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!dateRange) return;
+    setIsLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({
+      date_from: format(dateRange.from, "yyyy-MM-dd"),
+      date_to: format(dateRange.to, "yyyy-MM-dd"),
+    });
+    if (accountId) params.set("account_id", accountId);
+
+    try {
+      const res = await fetch(`/api/windsor/${endpoint}?${params}`);
+      if (!res.ok) throw new Error("Erro ao buscar dados");
+      const json = await res.json();
+      setData(json);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [endpoint, dateRange, accountId]);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  return { data, isLoading, error, refetch: fetchData, lastUpdated };
+}
