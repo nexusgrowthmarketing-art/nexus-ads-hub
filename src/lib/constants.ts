@@ -19,8 +19,8 @@ export const STRATEGIES: { value: Strategy; label: string }[] = [
 ];
 
 export const WINDSOR_FIELDS = {
-  meta: "date,campaign,adset,ad_name,ad_id,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion,roas",
-  google_ads: "date,campaign,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion,keyword",
+  meta: "date,campaign,ad_name,ad_id,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion",
+  google_ads: "date,campaign,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion",
   analytics: "date,source,medium,sessions,users,bounce_rate,pageviews",
   all: "date,source,medium,campaign,spend,impressions,clicks,conversions",
 };

@@ -52,6 +52,22 @@ class WindsorClient {
     return [];
   }
 
+  // Extract numeric value from Windsor fields that can be either a number, string, or array of action objects
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private extractValue(field: any): number {
+    if (field === null || field === undefined) return 0;
+    if (typeof field === "number") return field;
+    if (typeof field === "string") return Number(field) || 0;
+    // Windsor returns conversions/cost_per_conversion as arrays: [{action_type: "...", value: "..."}]
+    if (Array.isArray(field) && field.length > 0) {
+      // Sum all action values, or take the first one (usually "contact_total")
+      const total = field.find((a: { action_type: string }) => a.action_type === "contact_total");
+      if (total) return Number(total.value) || 0;
+      return Number(field[0].value) || 0;
+    }
+    return 0;
+  }
+
   private parseRows(raw: unknown[]): WindsorRow[] {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return raw.map((row: any) => ({
@@ -59,21 +75,25 @@ class WindsorClient {
       source: row.source ?? undefined,
       medium: row.medium ?? undefined,
       campaign: row.campaign ?? undefined,
-      adset: row.adset ?? undefined,
+      adset: row.adset ?? row.adset_name ?? undefined,
       ad_name: row.ad_name ?? undefined,
-      spend: Number(row.spend ?? 0),
-      impressions: Number(row.impressions ?? 0),
-      clicks: Number(row.clicks ?? 0),
-      ctr: Number(row.ctr ?? 0),
-      cpm: Number(row.cpm ?? 0),
-      cpc: Number(row.cpc ?? 0),
-      conversions: Number(row.conversions ?? 0),
-      cost_per_conversion: Number(row.cost_per_conversion ?? 0),
-      roas: Number(row.roas ?? 0),
-      sessions: row.sessions !== undefined ? Number(row.sessions) : undefined,
-      users: row.users !== undefined ? Number(row.users) : undefined,
-      bounce_rate: row.bounce_rate !== undefined ? Number(row.bounce_rate) : undefined,
-      pageviews: row.pageviews !== undefined ? Number(row.pageviews) : undefined,
+      ad_id: row.ad_id ?? undefined,
+      spend: this.extractValue(row.spend),
+      impressions: this.extractValue(row.impressions),
+      clicks: this.extractValue(row.clicks),
+      ctr: this.extractValue(row.ctr),
+      cpm: this.extractValue(row.cpm),
+      cpc: this.extractValue(row.cpc),
+      conversions: this.extractValue(row.conversions),
+      cost_per_conversion: this.extractValue(row.cost_per_conversion),
+      roas: this.extractValue(row.roas),
+      sessions: row.sessions !== undefined ? this.extractValue(row.sessions) : undefined,
+      users: row.users !== undefined ? this.extractValue(row.users) : undefined,
+      bounce_rate: row.bounce_rate !== undefined ? this.extractValue(row.bounce_rate) : undefined,
+      pageviews: row.pageviews !== undefined ? this.extractValue(row.pageviews) : undefined,
+      keyword: row.keyword ?? undefined,
+      phone_calls: row.phone_calls !== undefined ? this.extractValue(row.phone_calls) : undefined,
+      video_views: row.video_views !== undefined ? this.extractValue(row.video_views) : undefined,
     }));
   }
 
