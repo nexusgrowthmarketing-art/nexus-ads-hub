@@ -21,3 +21,11 @@ export const WINDSOR_CONNECTORS = {
   analytics: "googleanalytics4",
   all: "all",
 };
+
+export const ACCOUNTS = [
+  { id: "all", label: "Todas as contas" },
+  { id: "1259313081920836", label: "KDB Automotivo" },
+  { id: "888644596732484", label: "KDB Moveleiro" },
+  { id: "930705436097687", label: "Savanna Cubas" },
+  { id: "895401665782936", label: "Impressora Nacional" },
+];

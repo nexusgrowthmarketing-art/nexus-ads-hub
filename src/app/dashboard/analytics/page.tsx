@@ -9,12 +9,16 @@ import { ChartBar } from "@/components/chart-bar";
 import { EmptyState } from "@/components/empty-state";
 import { useWindsorData } from "@/hooks/use-windsor-data";
 import { useDateRange } from "@/hooks/use-date-range";
+import { useAccount } from "@/hooks/use-account";
+import { AccountSelector } from "@/components/account-selector";
 import { WindsorResponse } from "@/types/windsor";
 import { Users, FileText, ArrowDownUp } from "lucide-react";
 
 export default function AnalyticsPage() {
   const { dateRange, preset, setPreset, setDateRange } = useDateRange();
-  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("analytics", dateRange);
+  const { accountId, setAccountId } = useAccount();
+  const acct = accountId === "all" ? undefined : accountId;
+  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("analytics", dateRange, acct);
 
   const chartData = data?.data
     ? Object.entries(
@@ -43,9 +47,12 @@ export default function AnalyticsPage() {
     <>
       <Header title="Google Analytics 4" lastUpdated={lastUpdated} onRefresh={refetch} />
       <main className="flex-1 p-4 md:p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Google Analytics 4</span>
-          <DateRangePicker dateRange={dateRange} preset={preset} onPresetChange={setPreset} onDateRangeChange={setDateRange} />
+          <div className="flex items-center gap-2">
+            <AccountSelector value={accountId} onChange={setAccountId} />
+            <DateRangePicker dateRange={dateRange} preset={preset} onPresetChange={setPreset} onDateRangeChange={setDateRange} />
+          </div>
         </div>
 
         <KpiGrid>

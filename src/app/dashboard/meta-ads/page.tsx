@@ -2,6 +2,7 @@
 
 import { Header } from "@/components/header";
 import { DateRangePicker } from "@/components/date-range-picker";
+import { AccountSelector } from "@/components/account-selector";
 import { KpiCard } from "@/components/kpi-card";
 import { KpiGrid } from "@/components/kpi-grid";
 import { ChartArea } from "@/components/chart-area";
@@ -10,12 +11,15 @@ import { CampaignTable } from "@/components/campaign-table";
 import { EmptyState } from "@/components/empty-state";
 import { useWindsorData } from "@/hooks/use-windsor-data";
 import { useDateRange } from "@/hooks/use-date-range";
+import { useAccount } from "@/hooks/use-account";
 import { WindsorResponse } from "@/types/windsor";
 import { DollarSign, TrendingUp, Banknote, MousePointerClick } from "lucide-react";
 
 export default function MetaAdsPage() {
   const { dateRange, preset, setPreset, setDateRange } = useDateRange();
-  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("meta", dateRange);
+  const { accountId, setAccountId } = useAccount();
+  const acct = accountId === "all" ? undefined : accountId;
+  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("meta", dateRange, acct);
 
   const chartData = data?.data
     ? Object.entries(
@@ -27,16 +31,12 @@ export default function MetaAdsPage() {
       ).sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date: date.substring(5).replace("-", "/"), value }))
     : [];
 
-  // Top adsets
   const adsetMap: Record<string, number> = {};
   for (const row of data?.data ?? []) {
     const name = row.adset ?? "Sem conjunto";
     adsetMap[name] = (adsetMap[name] ?? 0) + row.spend;
   }
-  const topAdsets = Object.entries(adsetMap)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 10)
-    .map(([name, value]) => ({ name, value }));
+  const topAdsets = Object.entries(adsetMap).sort(([, a], [, b]) => b - a).slice(0, 10).map(([name, value]) => ({ name, value }));
 
   const s = data?.summary;
 
@@ -44,12 +44,15 @@ export default function MetaAdsPage() {
     <>
       <Header title="Meta Ads" lastUpdated={lastUpdated} onRefresh={refetch} />
       <main className="flex-1 p-4 md:p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Meta Ads</span>
             <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Instagram + Facebook</span>
           </div>
-          <DateRangePicker dateRange={dateRange} preset={preset} onPresetChange={setPreset} onDateRangeChange={setDateRange} />
+          <div className="flex items-center gap-2">
+            <AccountSelector value={accountId} onChange={setAccountId} />
+            <DateRangePicker dateRange={dateRange} preset={preset} onPresetChange={setPreset} onDateRangeChange={setDateRange} />
+          </div>
         </div>
 
         <KpiGrid>
