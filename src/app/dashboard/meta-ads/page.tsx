@@ -17,7 +17,7 @@ import { useWindsorData } from "@/hooks/use-windsor-data";
 import { useDateRange } from "@/hooks/use-date-range";
 import { useAccount } from "@/hooks/use-account";
 import { WindsorResponse, Strategy } from "@/types/windsor";
-import { detectStrategy } from "@/lib/constants";
+import { detectStrategy, matchAccount } from "@/lib/constants";
 
 export default function MetaAdsPage() {
   const { dateRange, preset, setPreset, setDateRange } = useDateRange();
@@ -26,16 +26,16 @@ export default function MetaAdsPage() {
   const [selectedCampaign, setSelectedCampaign] = useState("");
   const [selectedAdset, setSelectedAdset] = useState("");
   const [selectedAd, setSelectedAd] = useState("");
-  const acct = accountId === "all" ? undefined : accountId;
 
-  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("meta", dateRange, acct);
+  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("meta", dateRange);
 
-  // Filter pipeline
+  // Filter pipeline: account -> strategy -> sub-filters
   const filtered = useMemo(() => {
     let rows = data?.data ?? [];
+    rows = rows.filter((r) => matchAccount(r.campaign ?? "", accountId));
     if (strategies.length > 0) {
-      rows = rows.filter((row) => {
-        const s = detectStrategy(row.campaign ?? "");
+      rows = rows.filter((r) => {
+        const s = detectStrategy(r.campaign ?? "");
         return s && strategies.includes(s);
       });
     }
@@ -43,10 +43,14 @@ export default function MetaAdsPage() {
     if (selectedAdset) rows = rows.filter((r) => r.adset === selectedAdset);
     if (selectedAd) rows = rows.filter((r) => r.ad_name === selectedAd);
     return rows;
-  }, [data, strategies, selectedCampaign, selectedAdset, selectedAd]);
+  }, [data, accountId, strategies, selectedCampaign, selectedAdset, selectedAd]);
 
-  // Unique values for sub-filters
-  const campaigns = useMemo(() => Array.from(new Set((data?.data ?? []).map((r) => r.campaign).filter(Boolean) as string[])), [data]);
+  // Unique values for sub-filters (from account-filtered data, not strategy-filtered)
+  const accountFiltered = useMemo(() => {
+    return (data?.data ?? []).filter((r) => matchAccount(r.campaign ?? "", accountId));
+  }, [data, accountId]);
+
+  const campaigns = useMemo(() => Array.from(new Set(accountFiltered.map((r) => r.campaign).filter(Boolean) as string[])), [accountFiltered]);
   const adsets = useMemo(() => Array.from(new Set(filtered.map((r) => r.adset).filter(Boolean) as string[])), [filtered]);
   const ads = useMemo(() => Array.from(new Set(filtered.map((r) => r.ad_name).filter(Boolean) as string[])), [filtered]);
 
@@ -60,12 +64,9 @@ export default function MetaAdsPage() {
   const costPerResult = conv > 0 ? spend / conv : 0;
   const resultRate = clicks > 0 ? (conv / clicks) * 100 : 0;
 
-  // Determine result label based on strategy
-  const resultLabel = strategies.includes("mensagens") ? "Mensagens"
-    : strategies.includes("leads") ? "Leads"
+  const resultLabel = strategies.includes("leads") ? "Leads"
     : strategies.includes("ecommerce") ? "Vendas"
     : "Resultado";
-
   const costPerResultLabel = `C/${resultLabel}`;
   const resultRateLabel = `% ${resultLabel}`;
 
@@ -87,90 +88,50 @@ export default function MetaAdsPage() {
       }));
   }, [filtered]);
 
+  const pvTotal = filtered.reduce((s, r) => s + (r.landing_page_views ?? r.pageviews ?? 0), 0);
+
   return (
     <>
       <Header title="Meta Ads" lastUpdated={lastUpdated} onRefresh={refetch} />
       <main className="flex-1 p-4 md:p-6 space-y-6">
-        {/* Global filters */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <AccountSelector value={accountId} onChange={setAccountId} />
             <StrategyFilter selected={strategies} onChange={setStrategies} />
           </div>
           <div className="flex items-center gap-2">
-            <GoalBadge
-              currentValue={conv}
-              goalKey={`meta_${accountId}_${strategies.join(",") || "all"}`}
-              loading={isLoading}
-            />
+            <GoalBadge currentValue={conv} goalKey={`meta_${accountId}_${strategies.join(",") || "all"}`} loading={isLoading} />
             <DateRangePicker dateRange={dateRange} preset={preset} onPresetChange={setPreset} onDateRangeChange={setDateRange} />
           </div>
         </div>
 
-        {/* Sub-filters */}
         <SubFilters
-          campaigns={campaigns}
-          adsets={adsets}
-          ads={ads}
-          selectedCampaign={selectedCampaign}
-          selectedAdset={selectedAdset}
-          selectedAd={selectedAd}
-          onCampaignChange={setSelectedCampaign}
-          onAdsetChange={setSelectedAdset}
-          onAdChange={setSelectedAd}
+          campaigns={campaigns} adsets={adsets} ads={ads}
+          selectedCampaign={selectedCampaign} selectedAdset={selectedAdset} selectedAd={selectedAd}
+          onCampaignChange={setSelectedCampaign} onAdsetChange={setSelectedAdset} onAdChange={setSelectedAd}
         />
 
         {filtered.length === 0 && !isLoading ? (
           <EmptyState />
         ) : (
           <>
-            {/* KPI Summary + Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <KpiSummary
-                investido={spend}
-                resultado={conv}
-                costPerResult={costPerResult}
-                loading={isLoading}
-              />
-              <ChartCombo
-                data={dailyCombo}
-                title={`${costPerResultLabel} — ${resultLabel}`}
-                barLabel={costPerResultLabel}
-                lineLabel={resultLabel}
-                loading={isLoading}
-              />
+              <KpiSummary investido={spend} resultado={conv} costPerResult={costPerResult} loading={isLoading} />
+              <ChartCombo data={dailyCombo} title={`${costPerResultLabel} — ${resultLabel}`} barLabel={costPerResultLabel} lineLabel={resultLabel} loading={isLoading} />
             </div>
 
-            {/* Pyramid */}
             <PyramidKpis
               platform="meta"
               data={{
-                impressions,
-                clicks,
-                result: conv,
-                resultLabel,
-                cpc,
-                ctr,
-                costPerResult,
-                costPerResultLabel,
-                resultRate,
-                resultRateLabel,
-                extraLeft: {
-                  label: "C/PageView",
-                  value: `R$ ${filtered.reduce((s, r) => s + (r.landing_page_views ?? r.pageviews ?? 0), 0) > 0 ? (spend / filtered.reduce((s, r) => s + (r.landing_page_views ?? r.pageviews ?? 0), 0)).toFixed(2) : "0,00"}`,
-                },
-                extraRight: {
-                  label: "PageViews",
-                  value: String(filtered.reduce((s, r) => s + (r.landing_page_views ?? r.pageviews ?? 0), 0)),
-                },
+                impressions, clicks, result: conv, resultLabel,
+                cpc, ctr, costPerResult, costPerResultLabel, resultRate, resultRateLabel,
+                extraLeft: { label: "C/PageView", value: pvTotal > 0 ? `R$ ${(spend / pvTotal).toFixed(2)}` : "R$ 0,00" },
+                extraRight: { label: "PageViews", value: String(pvTotal) },
               }}
               loading={isLoading}
             />
 
-            {/* Campaign table */}
             <MetaCampaignTable data={filtered} loading={isLoading} />
-
-            {/* Ad creative table */}
             <AdCreativeTable data={filtered} resultLabel={resultLabel} loading={isLoading} />
           </>
         )}

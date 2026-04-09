@@ -16,7 +16,7 @@ import { useWindsorData } from "@/hooks/use-windsor-data";
 import { useDateRange } from "@/hooks/use-date-range";
 import { useAccount } from "@/hooks/use-account";
 import { WindsorResponse, Strategy } from "@/types/windsor";
-import { detectStrategy } from "@/lib/constants";
+import { detectStrategy, matchAccount } from "@/lib/constants";
 import { formatPercent, formatCompact } from "@/lib/formatters";
 import { Phone, Video, Search, BarChart2, MousePointerClick, Eye } from "lucide-react";
 
@@ -28,16 +28,16 @@ export default function GoogleAdsPage() {
   const [selectedAdGroup, setSelectedAdGroup] = useState("");
   const [selectedKeyword, setSelectedKeyword] = useState("");
   const [selectedAd, setSelectedAd] = useState("");
-  const acct = accountId === "all" ? undefined : accountId;
 
-  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("google-ads", dateRange, acct);
+  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("google-ads", dateRange);
 
   // Filter pipeline
   const filtered = useMemo(() => {
     let rows = data?.data ?? [];
+    rows = rows.filter((r) => matchAccount(r.campaign ?? "", accountId));
     if (strategies.length > 0) {
-      rows = rows.filter((row) => {
-        const s = detectStrategy(row.campaign ?? "");
+      rows = rows.filter((r) => {
+        const s = detectStrategy(r.campaign ?? "");
         return s && strategies.includes(s);
       });
     }
@@ -46,10 +46,13 @@ export default function GoogleAdsPage() {
     if (selectedKeyword) rows = rows.filter((r) => r.keyword === selectedKeyword);
     if (selectedAd) rows = rows.filter((r) => r.ad_name === selectedAd);
     return rows;
-  }, [data, strategies, selectedCampaign, selectedAdGroup, selectedKeyword, selectedAd]);
+  }, [data, accountId, strategies, selectedCampaign, selectedAdGroup, selectedKeyword, selectedAd]);
 
-  // Unique values for sub-filters
-  const campaigns = useMemo(() => Array.from(new Set((data?.data ?? []).map((r) => r.campaign).filter(Boolean) as string[])), [data]);
+  const accountFiltered = useMemo(() => {
+    return (data?.data ?? []).filter((r) => matchAccount(r.campaign ?? "", accountId));
+  }, [data, accountId]);
+
+  const campaigns = useMemo(() => Array.from(new Set(accountFiltered.map((r) => r.campaign).filter(Boolean) as string[])), [accountFiltered]);
   const adGroups = useMemo(() => Array.from(new Set(filtered.map((r) => r.adset).filter(Boolean) as string[])), [filtered]);
   const keywords = useMemo(() => Array.from(new Set(filtered.map((r) => r.keyword).filter(Boolean) as string[])), [filtered]);
   const ads = useMemo(() => Array.from(new Set(filtered.map((r) => r.ad_name).filter(Boolean) as string[])), [filtered]);
@@ -64,19 +67,10 @@ export default function GoogleAdsPage() {
   const costPerConversion = conv > 0 ? spend / conv : 0;
   const convRate = clicks > 0 ? (conv / clicks) * 100 : 0;
 
-  // Extra KPIs
   const totalInteractions = filtered.reduce((s, r) => s + (r.interactions ?? r.clicks), 0);
   const totalPhoneCalls = filtered.reduce((s, r) => s + (r.phone_calls ?? 0), 0);
   const totalVideoViews = filtered.reduce((s, r) => s + (r.video_views ?? 0), 0);
-  const avgSearchTopIS = filtered.length > 0
-    ? filtered.reduce((s, r) => s + (r.search_top_impression_share ?? 0), 0) / filtered.length
-    : 0;
   const interactionRate = impressions > 0 ? (totalInteractions / impressions) * 100 : 0;
-  const phoneClickRate = totalInteractions > 0 ? totalPhoneCalls : 0;
-  const videoViewRate = impressions > 0 ? (totalVideoViews / impressions) * 100 : 0;
-  const avgAbsTopIS = filtered.length > 0
-    ? filtered.reduce((s, r) => s + (r.abs_top_impression_share ?? 0), 0) / filtered.length
-    : 0;
 
   // Daily chart
   const dailyCombo = useMemo(() => {
@@ -100,36 +94,21 @@ export default function GoogleAdsPage() {
     <>
       <Header title="Google Ads" lastUpdated={lastUpdated} onRefresh={refetch} />
       <main className="flex-1 p-4 md:p-6 space-y-6">
-        {/* Global filters */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <AccountSelector value={accountId} onChange={setAccountId} />
             <StrategyFilter selected={strategies} onChange={setStrategies} />
           </div>
           <div className="flex items-center gap-2">
-            <GoalBadge
-              currentValue={conv}
-              goalKey={`google_${accountId}_${strategies.join(",") || "all"}`}
-              loading={isLoading}
-            />
+            <GoalBadge currentValue={conv} goalKey={`google_${accountId}_${strategies.join(",") || "all"}`} loading={isLoading} />
             <DateRangePicker dateRange={dateRange} preset={preset} onPresetChange={setPreset} onDateRangeChange={setDateRange} />
           </div>
         </div>
 
-        {/* Sub-filters */}
         <SubFilters
-          campaigns={campaigns}
-          adsets={adGroups}
-          ads={ads}
-          keywords={keywords}
-          selectedCampaign={selectedCampaign}
-          selectedAdset={selectedAdGroup}
-          selectedAd={selectedAd}
-          selectedKeyword={selectedKeyword}
-          onCampaignChange={setSelectedCampaign}
-          onAdsetChange={setSelectedAdGroup}
-          onAdChange={setSelectedAd}
-          onKeywordChange={setSelectedKeyword}
+          campaigns={campaigns} adsets={adGroups} ads={ads} keywords={keywords}
+          selectedCampaign={selectedCampaign} selectedAdset={selectedAdGroup} selectedAd={selectedAd} selectedKeyword={selectedKeyword}
+          onCampaignChange={setSelectedCampaign} onAdsetChange={setSelectedAdGroup} onAdChange={setSelectedAd} onKeywordChange={setSelectedKeyword}
           showKeyword
         />
 
@@ -137,52 +116,31 @@ export default function GoogleAdsPage() {
           <EmptyState />
         ) : (
           <>
-            {/* KPI Summary + Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <KpiSummary
-                investido={spend}
-                resultado={conv}
-                costPerResult={costPerConversion}
-                loading={isLoading}
-              />
-              <ChartCombo
-                data={dailyCombo}
-                title="Conversoes — C/Conversao"
-                barLabel="C/Conversao"
-                lineLabel="Conversoes"
-                loading={isLoading}
-              />
+              <KpiSummary investido={spend} resultado={conv} costPerResult={costPerConversion} loading={isLoading} />
+              <ChartCombo data={dailyCombo} title="Conversoes — C/Conversao" barLabel="C/Conversao" lineLabel="Conversoes" loading={isLoading} />
             </div>
 
-            {/* Pyramid */}
             <PyramidKpis
               platform="google"
               data={{
-                impressions,
-                clicks,
-                result: conv,
-                resultLabel: "Conversoes",
-                cpc,
-                ctr,
-                costPerResult: costPerConversion,
-                costPerResultLabel: "C/Conversao",
-                resultRate: convRate,
-                resultRateLabel: "% Conversao",
+                impressions, clicks, result: conv, resultLabel: "Conversoes",
+                cpc, ctr, costPerResult: costPerConversion, costPerResultLabel: "C/Conversao",
+                resultRate: convRate, resultRateLabel: "% Conversao",
               }}
               loading={isLoading}
             />
 
-            {/* Extra KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: "Interacoes", value: formatCompact(totalInteractions), icon: <MousePointerClick className="w-3.5 h-3.5" /> },
-                { label: "Impress. Chamadas", value: String(totalPhoneCalls), icon: <Phone className="w-3.5 h-3.5" /> },
+                { label: "Chamadas", value: String(totalPhoneCalls), icon: <Phone className="w-3.5 h-3.5" /> },
                 { label: "VideoViews", value: formatCompact(totalVideoViews), icon: <Video className="w-3.5 h-3.5" /> },
-                { label: "Search (Top) IS", value: formatPercent(avgSearchTopIS), icon: <Search className="w-3.5 h-3.5" /> },
-                { label: "Taxa de interacao", value: formatPercent(interactionRate), icon: <BarChart2 className="w-3.5 h-3.5" /> },
-                { label: "Cliques em Chamadas", value: String(phoneClickRate), icon: <Phone className="w-3.5 h-3.5" /> },
-                { label: "% Videoview", value: formatPercent(videoViewRate), icon: <Video className="w-3.5 h-3.5" /> },
-                { label: "Impression (Abs Top) %", value: formatPercent(avgAbsTopIS), icon: <Eye className="w-3.5 h-3.5" /> },
+                { label: "Search Top IS", value: formatPercent(0), icon: <Search className="w-3.5 h-3.5" /> },
+                { label: "Taxa interacao", value: formatPercent(interactionRate), icon: <BarChart2 className="w-3.5 h-3.5" /> },
+                { label: "Cliques Chamadas", value: String(totalPhoneCalls), icon: <Phone className="w-3.5 h-3.5" /> },
+                { label: "% Videoview", value: formatPercent(0), icon: <Video className="w-3.5 h-3.5" /> },
+                { label: "Abs Top IS", value: formatPercent(0), icon: <Eye className="w-3.5 h-3.5" /> },
               ].map((kpi) => (
                 <div key={kpi.label} className="bg-card border border-border rounded-xl px-4 py-3 animate-fade-in">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -190,12 +148,10 @@ export default function GoogleAdsPage() {
                     <p className="text-[9px] text-muted-foreground uppercase font-medium truncate">{kpi.label}</p>
                   </div>
                   <p className="text-sm font-bold">{kpi.value}</p>
-                  <p className="text-[10px] text-muted-foreground">N/A</p>
                 </div>
               ))}
             </div>
 
-            {/* Campaign table */}
             <GoogleCampaignTable data={filtered} loading={isLoading} />
           </>
         )}

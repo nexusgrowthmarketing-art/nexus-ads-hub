@@ -17,37 +17,42 @@ import { useWindsorData } from "@/hooks/use-windsor-data";
 import { useDateRange } from "@/hooks/use-date-range";
 import { useAccount } from "@/hooks/use-account";
 import { WindsorResponse, Strategy } from "@/types/windsor";
-import { detectStrategy } from "@/lib/constants";
+import { detectStrategy, matchAccount } from "@/lib/constants";
 
 export default function DashboardPage() {
   const { dateRange, preset, setPreset, setDateRange } = useDateRange();
   const { accountId, setAccountId } = useAccount();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
-  const acct = accountId === "all" ? undefined : accountId;
 
-  const { data: metaData, isLoading: metaLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("meta", dateRange, acct);
-  const { data: googleData, isLoading: googleLoading } = useWindsorData<WindsorResponse>("google-ads", dateRange, acct);
+  const { data: metaData, isLoading: metaLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("meta", dateRange);
+  const { data: googleData, isLoading: googleLoading } = useWindsorData<WindsorResponse>("google-ads", dateRange);
 
   const isLoading = metaLoading || googleLoading;
 
-  // Filter by strategy
+  // Filter by account (campaign name) + strategy
   const filteredMeta = useMemo(() => {
-    if (!metaData?.data) return [];
-    if (strategies.length === 0) return metaData.data;
-    return metaData.data.filter((row) => {
-      const s = detectStrategy(row.campaign ?? "");
-      return s && strategies.includes(s);
-    });
-  }, [metaData, strategies]);
+    let rows = metaData?.data ?? [];
+    rows = rows.filter((r) => matchAccount(r.campaign ?? "", accountId));
+    if (strategies.length > 0) {
+      rows = rows.filter((r) => {
+        const s = detectStrategy(r.campaign ?? "");
+        return s && strategies.includes(s);
+      });
+    }
+    return rows;
+  }, [metaData, accountId, strategies]);
 
   const filteredGoogle = useMemo(() => {
-    if (!googleData?.data) return [];
-    if (strategies.length === 0) return googleData.data;
-    return googleData.data.filter((row) => {
-      const s = detectStrategy(row.campaign ?? "");
-      return s && strategies.includes(s);
-    });
-  }, [googleData, strategies]);
+    let rows = googleData?.data ?? [];
+    rows = rows.filter((r) => matchAccount(r.campaign ?? "", accountId));
+    if (strategies.length > 0) {
+      rows = rows.filter((r) => {
+        const s = detectStrategy(r.campaign ?? "");
+        return s && strategies.includes(s);
+      });
+    }
+    return rows;
+  }, [googleData, accountId, strategies]);
 
   // Aggregations
   const metaSpend = filteredMeta.reduce((s, r) => s + r.spend, 0);
@@ -64,7 +69,7 @@ export default function DashboardPage() {
   const totalSpend = metaSpend + googleSpend;
   const costPerResult = totalConversions > 0 ? totalSpend / totalConversions : 0;
 
-  // Daily chart: C/Resultado + Resultado
+  // Daily combo chart
   const dailyCombo = useMemo(() => {
     const map: Record<string, { conv: number; spend: number }> = {};
     for (const row of [...filteredMeta, ...filteredGoogle]) {
@@ -82,7 +87,7 @@ export default function DashboardPage() {
       }));
   }, [filteredMeta, filteredGoogle]);
 
-  // Monthly chart: M:Investido + G:Investido + Total
+  // Monthly charts
   const monthlyInvestido = useMemo(() => {
     const map: Record<string, { meta: number; google: number }> = {};
     for (const row of filteredMeta) {
@@ -106,7 +111,6 @@ export default function DashboardPage() {
       }));
   }, [filteredMeta, filteredGoogle]);
 
-  // Monthly chart: M:Resultado + G:Resultado + Total
   const monthlyResultado = useMemo(() => {
     const map: Record<string, { meta: number; google: number }> = {};
     for (const row of filteredMeta) {
@@ -130,29 +134,28 @@ export default function DashboardPage() {
       }));
   }, [filteredMeta, filteredGoogle]);
 
-  // Monthly CPR
   const monthlyCPR = useMemo(() => {
-    const map: Record<string, { metaSpend: number; metaConv: number; googleSpend: number; googleConv: number }> = {};
+    const map: Record<string, { ms: number; mc: number; gs: number; gc: number }> = {};
     for (const row of filteredMeta) {
       const m = row.date.substring(0, 7);
-      if (!map[m]) map[m] = { metaSpend: 0, metaConv: 0, googleSpend: 0, googleConv: 0 };
-      map[m].metaSpend += row.spend;
-      map[m].metaConv += row.conversions;
+      if (!map[m]) map[m] = { ms: 0, mc: 0, gs: 0, gc: 0 };
+      map[m].ms += row.spend;
+      map[m].mc += row.conversions;
     }
     for (const row of filteredGoogle) {
       const m = row.date.substring(0, 7);
-      if (!map[m]) map[m] = { metaSpend: 0, metaConv: 0, googleSpend: 0, googleConv: 0 };
-      map[m].googleSpend += row.spend;
-      map[m].googleConv += row.conversions;
+      if (!map[m]) map[m] = { ms: 0, mc: 0, gs: 0, gc: 0 };
+      map[m].gs += row.spend;
+      map[m].gc += row.conversions;
     }
     const months = ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."];
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, v]) => ({
         month: months[parseInt(key.split("-")[1]) - 1] || key,
-        meta: v.metaConv > 0 ? v.metaSpend / v.metaConv : 0,
-        google: v.googleConv > 0 ? v.googleSpend / v.googleConv : 0,
-        total: (v.metaConv + v.googleConv) > 0 ? (v.metaSpend + v.googleSpend) / (v.metaConv + v.googleConv) : 0,
+        meta: v.mc > 0 ? v.ms / v.mc : 0,
+        google: v.gc > 0 ? v.gs / v.gc : 0,
+        total: (v.mc + v.gc) > 0 ? (v.ms + v.gs) / (v.mc + v.gc) : 0,
       }));
   }, [filteredMeta, filteredGoogle]);
 
@@ -193,22 +196,13 @@ export default function DashboardPage() {
           <EmptyState />
         ) : (
           <>
-            {/* Row 1: KPI Summary + Daily Combo Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <KpiSummary
                 investido={totalSpend}
                 resultado={totalConversions}
                 costPerResult={costPerResult}
-                meta={{
-                  spend: metaSpend,
-                  result: metaConv,
-                  costPerResult: metaCostPerResult,
-                }}
-                google={{
-                  spend: googleSpend,
-                  result: googleConv,
-                  costPerResult: googleCostPerResult,
-                }}
+                meta={{ spend: metaSpend, result: metaConv, costPerResult: metaCostPerResult }}
+                google={{ spend: googleSpend, result: googleConv, costPerResult: googleCostPerResult }}
                 loading={isLoading}
               />
               <ChartCombo
@@ -220,78 +214,38 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Row 2: Pyramid KPIs (Meta + Google side by side) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <PyramidKpis
                 platform="meta"
                 data={{
-                  impressions: metaImpressions,
-                  clicks: metaClicks,
-                  result: metaConv,
-                  resultLabel: "Mensagens",
-                  cpc: metaCPC,
-                  ctr: metaCTR,
-                  costPerResult: metaCostPerResult,
-                  costPerResultLabel: "C/Mensagem",
-                  resultRate: metaResultRate,
-                  resultRateLabel: "% Mensagem",
+                  impressions: metaImpressions, clicks: metaClicks, result: metaConv,
+                  resultLabel: "Mensagens", cpc: metaCPC, ctr: metaCTR,
+                  costPerResult: metaCostPerResult, costPerResultLabel: "C/Mensagem",
+                  resultRate: metaResultRate, resultRateLabel: "% Mensagem",
                 }}
                 loading={isLoading}
               />
               <PyramidKpis
                 platform="google"
                 data={{
-                  impressions: googleImpressions,
-                  clicks: googleClicks,
-                  result: googleConv,
-                  resultLabel: "Conversoes",
-                  cpc: googleCPC,
-                  ctr: googleCTR,
-                  costPerResult: googleCostPerResult,
-                  costPerResultLabel: "C/Conversao",
-                  resultRate: googleResultRate,
-                  resultRateLabel: "% Conversao",
+                  impressions: googleImpressions, clicks: googleClicks, result: googleConv,
+                  resultLabel: "Conversoes", cpc: googleCPC, ctr: googleCTR,
+                  costPerResult: googleCostPerResult, costPerResultLabel: "C/Conversao",
+                  resultRate: googleResultRate, resultRateLabel: "% Conversao",
                 }}
                 loading={isLoading}
               />
             </div>
 
-            {/* Row 3: Monthly charts */}
-            <ChartMonthly
-              data={monthlyInvestido}
-              title="Investimento Mensal por Plataforma"
-              metaLabel="M: Investido"
-              googleLabel="G: Investido"
-              totalLabel="Total Investido"
-              loading={isLoading}
-            />
+            <ChartMonthly data={monthlyInvestido} title="Investimento Mensal por Plataforma" loading={isLoading} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ChartMonthly
-                data={monthlyResultado}
-                title="Resultados Mensais"
-                metaLabel="M: Resultado"
-                googleLabel="G: Resultado"
-                totalLabel="Resultado Total"
-                loading={isLoading}
-              />
-              <ChartMonthly
-                data={monthlyCPR}
-                title="CPR Mensal"
-                metaLabel="M: CPR"
-                googleLabel="G: CPR"
-                totalLabel="Total CPR"
-                loading={isLoading}
-              />
+              <ChartMonthly data={monthlyResultado} title="Resultados Mensais" metaLabel="M: Resultado" googleLabel="G: Resultado" totalLabel="Resultado Total" loading={isLoading} />
+              <ChartMonthly data={monthlyCPR} title="CPR Mensal" metaLabel="M: CPR" googleLabel="G: CPR" totalLabel="Total CPR" loading={isLoading} />
             </div>
 
-            {/* Row 4: Tables */}
-            {filteredMeta.length > 0 && (
-              <MetaCampaignTable data={filteredMeta} loading={isLoading} />
-            )}
-            {filteredGoogle.length > 0 && (
-              <GoogleCampaignTable data={filteredGoogle} loading={isLoading} />
-            )}
+            {filteredMeta.length > 0 && <MetaCampaignTable data={filteredMeta} loading={isLoading} />}
+            {filteredGoogle.length > 0 && <GoogleCampaignTable data={filteredGoogle} loading={isLoading} />}
           </>
         )}
       </main>

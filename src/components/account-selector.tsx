@@ -15,7 +15,7 @@ export function AccountSelector({ value, onChange }: Props) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+        className="h-9 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
       >
         {ACCOUNTS.map((acc) => (
           <option key={acc.id} value={acc.id}>

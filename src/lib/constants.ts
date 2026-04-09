@@ -32,29 +32,54 @@ export const WINDSOR_CONNECTORS = {
   all: "all",
 };
 
+// Accounts with campaign name keywords for client-side filtering
+// Windsor API does not filter by account_id reliably, so we filter by campaign name
 export const ACCOUNTS = [
-  { id: "all", label: "Todas as contas" },
-  { id: "1259313081920836", label: "KDB Automotivo" },
-  { id: "888644596732484", label: "KDB Moveleiro" },
-  { id: "930705436097687", label: "Savanna Cubas" },
-  { id: "895401665782936", label: "Impressora Nacional" },
+  { id: "all", label: "Todas as contas", keywords: [] },
+  { id: "kdb_automotivo", label: "KDB Automotivo", keywords: ["kdb automotiv"] },
+  { id: "kdb_moveleiro", label: "KDB Moveleiro", keywords: ["kdb moveleiro"] },
+  { id: "savanna", label: "Savanna Cubas", keywords: ["savanna"] },
+  { id: "impressora", label: "Impressora Nacional", keywords: ["jessica", "ketlyn", "stefanie", "ellen", "impressora", "grafica"] },
 ];
 
-// Strategy keywords used to detect strategy from campaign names
-export const STRATEGY_KEYWORDS: Record<Strategy, string[]> = {
-  mensagens: ["mensag", "message", "msg", "whatsapp", "direct", "dm"],
-  leads: ["lead", "formulario", "form", "captacao", "cadastro"],
-  trafego_direto: ["trafego", "traffic", "site", "landing", "visita"],
-  ecommerce: ["venda", "compra", "ecommerce", "shop", "loja", "conversao", "purchase", "checkout"],
-  distribuicao: ["distribuicao", "alcance", "awareness", "reconhecimento", "brand"],
-};
+// Match campaign name to client account
+export function matchAccount(campaignName: string, accountId: string): boolean {
+  if (accountId === "all") return true;
+  const account = ACCOUNTS.find((a) => a.id === accountId);
+  if (!account || account.keywords.length === 0) return true;
+  const lower = campaignName.toLowerCase();
+  return account.keywords.some((kw) => lower.includes(kw));
+}
 
+// Strategy detection from campaign naming conventions
+// Priority order: specific keywords first, then broader ones
 export function detectStrategy(campaignName: string): Strategy | null {
   const lower = campaignName.toLowerCase();
-  for (const [strategy, keywords] of Object.entries(STRATEGY_KEYWORDS)) {
-    if (keywords.some((kw) => lower.includes(kw))) {
-      return strategy as Strategy;
-    }
+
+  // eCommerce: purchase/shop/loja keywords
+  if (["shop", "loja", "ecommerce", "purchase", "checkout", "venda na loja"].some((kw) => lower.includes(kw))) {
+    return "ecommerce";
   }
+
+  // Leads: conversion campaigns, form captures
+  if (["[conv]", "lead", "formulario", "form", "captacao", "cadastro"].some((kw) => lower.includes(kw))) {
+    return "leads";
+  }
+
+  // Mensagens: WhatsApp, Direct, message campaigns
+  if (["whatsapp", "mensag", "message", "direct", "[msg]", "[dm]"].some((kw) => lower.includes(kw))) {
+    return "mensagens";
+  }
+
+  // Trafego Direto: site traffic campaigns
+  if (["site ->", "site ", "landing", "trafego", "traffic", "visita"].some((kw) => lower.includes(kw))) {
+    return "trafego_direto";
+  }
+
+  // Distribuicao: awareness, reach, remarketing, engagement without specific destination
+  if (["distribuicao", "alcance", "awareness", "reconhecimento", "brand", "rmk", "engaja"].some((kw) => lower.includes(kw))) {
+    return "distribuicao";
+  }
+
   return null;
 }

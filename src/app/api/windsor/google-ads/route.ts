@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "date_from e date_to obrigatorios" }, { status: 400 });
   }
   try {
-    const result = await windsor.fetchGoogleAds(dateFrom, dateTo, sp.get("account_id") ?? undefined);
+    const result = await windsor.fetchGoogleAds(dateFrom, dateTo);
     return NextResponse.json(result);
   } catch (err) {
     console.error("[Windsor Google Ads]", err);

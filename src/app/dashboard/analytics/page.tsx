@@ -7,18 +7,17 @@ import { KpiGrid } from "@/components/kpi-grid";
 import { ChartArea } from "@/components/chart-area";
 import { ChartBar } from "@/components/chart-bar";
 import { EmptyState } from "@/components/empty-state";
+import { AccountSelector } from "@/components/account-selector";
 import { useWindsorData } from "@/hooks/use-windsor-data";
 import { useDateRange } from "@/hooks/use-date-range";
 import { useAccount } from "@/hooks/use-account";
-import { AccountSelector } from "@/components/account-selector";
 import { WindsorResponse } from "@/types/windsor";
 import { Users, FileText, ArrowDownUp } from "lucide-react";
 
 export default function AnalyticsPage() {
   const { dateRange, preset, setPreset, setDateRange } = useDateRange();
   const { accountId, setAccountId } = useAccount();
-  const acct = accountId === "all" ? undefined : accountId;
-  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("analytics", dateRange, acct);
+  const { data, isLoading, lastUpdated, refetch } = useWindsorData<WindsorResponse>("analytics", dateRange);
 
   const chartData = data?.data
     ? Object.entries(
@@ -30,16 +29,12 @@ export default function AnalyticsPage() {
       ).sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date: date.substring(5).replace("-", "/"), value }))
     : [];
 
-  // Top sources
   const sourceMap: Record<string, number> = {};
   for (const row of data?.data ?? []) {
     const name = [row.source, row.medium].filter(Boolean).join(" / ") || "Direto";
     sourceMap[name] = (sourceMap[name] ?? 0) + (row.sessions ?? 0);
   }
-  const topSources = Object.entries(sourceMap)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 10)
-    .map(([name, value]) => ({ name, value }));
+  const topSources = Object.entries(sourceMap).sort(([, a], [, b]) => b - a).slice(0, 10).map(([name, value]) => ({ name, value }));
 
   const s = data?.summary;
 

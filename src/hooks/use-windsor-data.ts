@@ -8,8 +8,7 @@ const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export function useWindsorData<T>(
   endpoint: string,
-  dateRange: DateRange | null,
-  accountId?: string
+  dateRange: DateRange | null
 ) {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +24,6 @@ export function useWindsorData<T>(
       date_from: format(dateRange.from, "yyyy-MM-dd"),
       date_to: format(dateRange.to, "yyyy-MM-dd"),
     });
-    if (accountId) params.set("account_id", accountId);
 
     try {
       const res = await fetch(`/api/windsor/${endpoint}?${params}`);
@@ -38,7 +36,7 @@ export function useWindsorData<T>(
     } finally {
       setIsLoading(false);
     }
-  }, [endpoint, dateRange, accountId]);
+  }, [endpoint, dateRange]);
 
   useEffect(() => {
     fetchData();
