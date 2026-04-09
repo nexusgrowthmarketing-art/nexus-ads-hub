@@ -1,3 +1,5 @@
+import { Strategy } from "@/types/windsor";
+
 export const DATE_PRESETS = [
   { label: "Hoje", value: "today" as const },
   { label: "Ontem", value: "yesterday" as const },
@@ -8,9 +10,17 @@ export const DATE_PRESETS = [
   { label: "Mes passado", value: "last_month" as const },
 ];
 
+export const STRATEGIES: { value: Strategy; label: string }[] = [
+  { value: "distribuicao", label: "Distribuicao" },
+  { value: "mensagens", label: "Mensagens" },
+  { value: "leads", label: "Leads" },
+  { value: "trafego_direto", label: "Trafego Direto" },
+  { value: "ecommerce", label: "eCommerce" },
+];
+
 export const WINDSOR_FIELDS = {
-  meta: "date,campaign,adset,ad_name,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion,roas",
-  google_ads: "date,campaign,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion",
+  meta: "date,campaign,adset,ad_name,ad_id,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion,roas",
+  google_ads: "date,campaign,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion,keyword",
   analytics: "date,source,medium,sessions,users,bounce_rate,pageviews",
   all: "date,source,medium,campaign,spend,impressions,clicks,conversions",
 };
@@ -29,3 +39,22 @@ export const ACCOUNTS = [
   { id: "930705436097687", label: "Savanna Cubas" },
   { id: "895401665782936", label: "Impressora Nacional" },
 ];
+
+// Strategy keywords used to detect strategy from campaign names
+export const STRATEGY_KEYWORDS: Record<Strategy, string[]> = {
+  mensagens: ["mensag", "message", "msg", "whatsapp", "direct", "dm"],
+  leads: ["lead", "formulario", "form", "captacao", "cadastro"],
+  trafego_direto: ["trafego", "traffic", "site", "landing", "visita"],
+  ecommerce: ["venda", "compra", "ecommerce", "shop", "loja", "conversao", "purchase", "checkout"],
+  distribuicao: ["distribuicao", "alcance", "awareness", "reconhecimento", "brand"],
+};
+
+export function detectStrategy(campaignName: string): Strategy | null {
+  const lower = campaignName.toLowerCase();
+  for (const [strategy, keywords] of Object.entries(STRATEGY_KEYWORDS)) {
+    if (keywords.some((kw) => lower.includes(kw))) {
+      return strategy as Strategy;
+    }
+  }
+  return null;
+}
