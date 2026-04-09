@@ -99,8 +99,9 @@ export function GoalBadge({ currentValue, goalKey, loading }: Props) {
               <span className="text-[10px] text-muted-foreground uppercase">Referencia</span>
               <input
                 type="number"
+                min="0"
                 value={config.reference}
-                onChange={(e) => setConfig({ ...config, reference: Number(e.target.value) })}
+                onChange={(e) => setConfig({ ...config, reference: Math.max(0, Number(e.target.value)) })}
                 className="w-full h-8 mt-1 rounded-lg border border-input bg-background px-2 text-sm"
               />
             </label>
@@ -108,8 +109,9 @@ export function GoalBadge({ currentValue, goalKey, loading }: Props) {
               <span className="text-[10px] text-muted-foreground uppercase">Meta</span>
               <input
                 type="number"
+                min="1"
                 value={config.target}
-                onChange={(e) => setConfig({ ...config, target: Number(e.target.value) })}
+                onChange={(e) => setConfig({ ...config, target: Math.max(1, Number(e.target.value)) })}
                 className="w-full h-8 mt-1 rounded-lg border border-input bg-background px-2 text-sm"
               />
             </label>

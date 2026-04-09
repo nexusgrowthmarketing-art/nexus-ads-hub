@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
   try {
     const result = await windsor.fetchMetaAds(dateFrom, dateTo, sp.get("account_id") ?? undefined);
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    console.error("[Windsor Meta]", err);
     return NextResponse.json({ error: "Erro ao buscar dados do Meta Ads" }, { status: 500 });
   }
 }

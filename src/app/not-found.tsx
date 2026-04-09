@@ -19,7 +19,7 @@ export default function NotFound() {
         className="mb-6 opacity-30 dark:hidden block"
       />
       <h1 className="text-4xl font-bold mb-2">404</h1>
-      <p className="text-muted-foreground mb-6">Pagina nao encontrada</p>
+      <p className="text-muted-foreground mb-6">Pagina nao encontrada.</p>
       <Link
         href="/dashboard"
         className="text-sm text-primary hover:underline"

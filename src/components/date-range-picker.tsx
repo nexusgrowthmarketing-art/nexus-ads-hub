@@ -126,7 +126,7 @@ export function DateRangePicker({ dateRange, preset, onPresetChange, onDateRange
       </button>
 
       {open && (
-        <div className="absolute top-full mt-1 right-0 z-50 bg-popover border border-border rounded-xl shadow-xl p-4 animate-fade-in">
+        <div className="absolute top-full mt-1 right-0 z-50 bg-popover border border-border rounded-xl shadow-xl p-4 animate-fade-in max-h-[80vh] overflow-y-auto">
           {/* Preset selector */}
           <div className="flex items-center justify-end mb-3">
             <select
@@ -144,7 +144,7 @@ export function DateRangePicker({ dateRange, preset, onPresetChange, onDateRange
           </div>
 
           {/* Dual calendar */}
-          <div className="flex gap-6">
+          <div className="flex flex-col sm:flex-row gap-6">
             <MiniCalendar
               label="Data de inicio"
               month={fromMonth}

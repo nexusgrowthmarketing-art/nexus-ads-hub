@@ -141,8 +141,8 @@ export function MetaCampaignTable({ data, loading }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {visible.map((row, i) => (
-              <tr key={i} className="hover:bg-accent/50 transition-colors">
+            {visible.map((row) => (
+              <tr key={row.campaign} className="hover:bg-accent/50 transition-colors">
                 {COLUMNS.map((col) => (
                   <td
                     key={col.key}

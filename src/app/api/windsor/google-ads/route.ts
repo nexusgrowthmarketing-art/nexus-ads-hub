@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
   try {
     const result = await windsor.fetchGoogleAds(dateFrom, dateTo, sp.get("account_id") ?? undefined);
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    console.error("[Windsor Google Ads]", err);
     return NextResponse.json({ error: "Erro ao buscar dados do Google Ads" }, { status: 500 });
   }
 }

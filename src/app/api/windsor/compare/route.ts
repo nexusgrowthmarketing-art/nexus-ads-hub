@@ -37,7 +37,8 @@ export async function GET(req: NextRequest) {
     };
 
     return NextResponse.json({ current: current.summary, previous: previous.summary, variations });
-  } catch {
+  } catch (err) {
+    console.error("[Windsor Compare]", err);
     return NextResponse.json({ error: "Erro ao comparar periodos" }, { status: 500 });
   }
 }

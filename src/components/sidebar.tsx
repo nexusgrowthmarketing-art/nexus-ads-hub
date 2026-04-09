@@ -15,7 +15,9 @@ import {
   PanelLeft,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
@@ -31,8 +33,15 @@ const bottomItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-card border-r border-border">
@@ -111,8 +120,15 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-border">
+      <div className="px-4 py-3 border-t border-border space-y-2">
         <ThemeToggle collapsed={collapsed} />
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors w-full"
+        >
+          <LogOut className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <span>Sair</span>}
+        </button>
       </div>
     </div>
   );

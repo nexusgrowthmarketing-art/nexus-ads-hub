@@ -103,16 +103,23 @@ class WindsorClient {
     };
   }
 
+  clearCache() {
+    this.cache.clear();
+  }
+
   private async fetch(
     connector: keyof typeof WINDSOR_CONNECTORS,
     fields: string,
     dateFrom: string,
     dateTo: string,
-    accountId?: string
+    accountId?: string,
+    bustCache?: boolean
   ): Promise<WindsorResponse> {
     const cacheKey = this.getCacheKey(connector, dateFrom, dateTo, accountId);
-    const cached = this.getFromCache(cacheKey);
-    if (cached) return cached;
+    if (!bustCache) {
+      const cached = this.getFromCache(cacheKey);
+      if (cached) return cached;
+    }
 
     const params = new URLSearchParams({
       api_key: this.apiKey,

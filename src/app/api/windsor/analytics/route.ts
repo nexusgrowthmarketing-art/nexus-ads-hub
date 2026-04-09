@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
   try {
     const result = await windsor.fetchAnalytics(dateFrom, dateTo, sp.get("account_id") ?? undefined);
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    console.error("[Windsor Analytics]", err);
     return NextResponse.json({ error: "Erro ao buscar dados do Analytics" }, { status: 500 });
   }
 }

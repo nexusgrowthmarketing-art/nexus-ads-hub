@@ -100,7 +100,7 @@ export function KpiSummary({
               {investidoPct.toFixed(1)}%
             </span>
           )}
-          <ProgressBar pct={investidoPct} target={investidoTarget} color={investidoPct && investidoPct > 100 ? "#EF4444" : "#EF4444"} />
+          <ProgressBar pct={investidoPct} target={investidoTarget} color={investidoPct && investidoPct > 100 ? "#EF4444" : "#EAB308"} />
         </div>
         <div>
           <p className="text-[10px] text-muted-foreground uppercase font-medium">Resultado</p>
@@ -120,7 +120,7 @@ export function KpiSummary({
               {costPerResultPct.toFixed(1)}%
             </span>
           )}
-          <ProgressBar pct={costPerResultPct} target={costPerResultTarget} color={costPerResultPct && costPerResultPct <= 100 ? "#22C55E" : "#22C55E"} />
+          <ProgressBar pct={costPerResultPct} target={costPerResultTarget} color={costPerResultPct && costPerResultPct <= 100 ? "#22C55E" : "#EF4444"} />
         </div>
       </div>
 
