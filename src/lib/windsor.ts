@@ -78,6 +78,7 @@ class WindsorClient {
       adset: row.adset ?? row.adset_name ?? undefined,
       ad_name: row.ad_name ?? undefined,
       ad_id: row.ad_id ?? undefined,
+      account_name: row.account_name ?? undefined,
       spend: this.extractValue(row.spend),
       impressions: this.extractValue(row.impressions),
       clicks: this.extractValue(row.clicks),

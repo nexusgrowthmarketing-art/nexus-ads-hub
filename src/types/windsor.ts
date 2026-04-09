@@ -6,6 +6,7 @@ export interface WindsorRow {
   adset?: string;
   ad_name?: string;
   ad_id?: string;
+  account_name?: string;
   spend: number;
   impressions: number;
   clicks: number;

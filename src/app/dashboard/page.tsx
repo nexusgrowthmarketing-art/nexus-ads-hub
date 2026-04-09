@@ -32,7 +32,7 @@ export default function DashboardPage() {
   // Filter by account (campaign name) + strategy
   const filteredMeta = useMemo(() => {
     let rows = metaData?.data ?? [];
-    rows = rows.filter((r) => matchAccount(r.campaign ?? "", accountId));
+    rows = rows.filter((r) => matchAccount(r.account_name, accountId));
     if (strategies.length > 0) {
       rows = rows.filter((r) => {
         const s = detectStrategy(r.campaign ?? "");
@@ -44,7 +44,7 @@ export default function DashboardPage() {
 
   const filteredGoogle = useMemo(() => {
     let rows = googleData?.data ?? [];
-    rows = rows.filter((r) => matchAccount(r.campaign ?? "", accountId));
+    rows = rows.filter((r) => matchAccount(r.account_name, accountId));
     if (strategies.length > 0) {
       rows = rows.filter((r) => {
         const s = detectStrategy(r.campaign ?? "");

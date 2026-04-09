@@ -19,10 +19,10 @@ export const STRATEGIES: { value: Strategy; label: string }[] = [
 ];
 
 export const WINDSOR_FIELDS = {
-  meta: "date,campaign,ad_name,ad_id,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion",
-  google_ads: "date,campaign,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion",
+  meta: "date,campaign,ad_name,ad_id,account_name,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion",
+  google_ads: "date,campaign,account_name,spend,impressions,clicks,ctr,cpm,cpc,conversions,cost_per_conversion",
   analytics: "date,source,medium,sessions,users,bounce_rate,pageviews",
-  all: "date,source,medium,campaign,spend,impressions,clicks,conversions",
+  all: "date,source,medium,campaign,account_name,spend,impressions,clicks,conversions",
 };
 
 export const WINDSOR_CONNECTORS = {
@@ -32,23 +32,23 @@ export const WINDSOR_CONNECTORS = {
   all: "all",
 };
 
-// Accounts with campaign name keywords for client-side filtering
-// Windsor API does not filter by account_id reliably, so we filter by campaign name
+// Accounts - match by account_name field from Windsor API
 export const ACCOUNTS = [
-  { id: "all", label: "Todas as contas", keywords: [] },
-  { id: "kdb_automotivo", label: "KDB Automotivo", keywords: ["kdb automotiv"] },
-  { id: "kdb_moveleiro", label: "KDB Moveleiro", keywords: ["kdb moveleiro"] },
-  { id: "savanna", label: "Savanna Cubas", keywords: ["savanna"] },
-  { id: "impressora", label: "Impressora Nacional", keywords: ["jessica", "ketlyn", "stefanie", "ellen", "impressora", "grafica"] },
+  { id: "all", label: "Todas as contas", match: [] as string[] },
+  { id: "kdb_automotivo", label: "KDB Automotivo", match: ["kdb  automotivo", "kdb automotivo"] },
+  { id: "kdb_moveleiro", label: "KDB Moveleiro", match: ["kdb moveleiro"] },
+  { id: "savanna", label: "Savanna Cubas", match: ["savanna"] },
+  { id: "impressora", label: "Impressora Nacional", match: ["impressora nacional"] },
 ];
 
-// Match campaign name to client account
-export function matchAccount(campaignName: string, accountId: string): boolean {
+// Match row's account_name to selected account
+export function matchAccount(accountName: string | undefined, accountId: string): boolean {
   if (accountId === "all") return true;
+  if (!accountName) return false;
   const account = ACCOUNTS.find((a) => a.id === accountId);
-  if (!account || account.keywords.length === 0) return true;
-  const lower = campaignName.toLowerCase();
-  return account.keywords.some((kw) => lower.includes(kw));
+  if (!account || account.match.length === 0) return true;
+  const lower = accountName.toLowerCase();
+  return account.match.some((kw) => lower.includes(kw));
 }
 
 // Strategy detection from campaign naming conventions

@@ -32,7 +32,7 @@ export default function MetaAdsPage() {
   // Filter pipeline: account -> strategy -> sub-filters
   const filtered = useMemo(() => {
     let rows = data?.data ?? [];
-    rows = rows.filter((r) => matchAccount(r.campaign ?? "", accountId));
+    rows = rows.filter((r) => matchAccount(r.account_name, accountId));
     if (strategies.length > 0) {
       rows = rows.filter((r) => {
         const s = detectStrategy(r.campaign ?? "");
@@ -47,7 +47,7 @@ export default function MetaAdsPage() {
 
   // Unique values for sub-filters (from account-filtered data, not strategy-filtered)
   const accountFiltered = useMemo(() => {
-    return (data?.data ?? []).filter((r) => matchAccount(r.campaign ?? "", accountId));
+    return (data?.data ?? []).filter((r) => matchAccount(r.account_name, accountId));
   }, [data, accountId]);
 
   const campaigns = useMemo(() => Array.from(new Set(accountFiltered.map((r) => r.campaign).filter(Boolean) as string[])), [accountFiltered]);
